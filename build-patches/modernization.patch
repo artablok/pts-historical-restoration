@@ -1,0 +1,158 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index def30bb8..2368a8a4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -38,12 +38,10 @@ LIST(APPEND BOOST_COMPONENTS thread
+                              system
+                              filesystem
+                              program_options
+-                             signals
+                              serialization
+                              chrono
+                              unit_test_framework
+-                             context
+-                             locale)
++                             context)
+ 
+ set(Boost_USE_STATIC_LIBS ON)
+ IF( WIN32 )
+diff --git a/libraries/blockchain/include/bts/blockchain/config.hpp b/libraries/blockchain/include/bts/blockchain/config.hpp
+index 85f339c4..9218b155 100644
+--- a/libraries/blockchain/include/bts/blockchain/config.hpp
++++ b/libraries/blockchain/include/bts/blockchain/config.hpp
+@@ -43,7 +43,7 @@
+ 
+ #define BTS_BLOCKCHAIN_ENABLE_NEGATIVE_VOTES                false
+ 
+-#define BTS_MAX_DELEGATE_PAY_PER_BLOCK                      int64_t( 50 * BTS_BLOCKCHAIN_PRECISION ) // 50 PTS
++#define BTS_MAX_DELEGATE_PAY_PER_BLOCK                      ::int64_t( 50 * BTS_BLOCKCHAIN_PRECISION ) // 50 PTS
+ 
+ /**
+  * To prevent a delegate from producing blocks on split network,
+@@ -55,7 +55,7 @@
+ /**
+  * Defines the number of seconds that should elapse between blocks
+  */
+-#define BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC                   int64_t(10)
++#define BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC                   ::int64_t(10)
+ 
+ /**
+  *  The maximum size of the raw data contained in the blockchain, this size is
+@@ -67,7 +67,7 @@
+  *
+  *  Adjusting this value will change the effective fee charged on transactions
+  */
+-#define BTS_BLOCKCHAIN_MAX_SIZE                             (1024*1024*1024*int64_t(100)) // 100 GB
++#define BTS_BLOCKCHAIN_MAX_SIZE                             (1024*1024*1024*::int64_t(100)) // 100 GB
+ #define BTS_BLOCKCHAIN_MIN_NAME_SIZE                        1
+ #define BTS_BLOCKCHAIN_MAX_NAME_SIZE                        63
+ #define BTS_BLOCKCHAIN_MAX_NAME_DATA_SIZE                   (1024*8)
+@@ -83,7 +83,7 @@
+  *
+  *  10^15 / 2^53 < 1 allows all values to be represented as a double or an int64
+  */
+-#define BTS_BLOCKCHAIN_MAX_SHARES                           (1000*1000*int64_t(1000)*1000*int64_t(1000))
++#define BTS_BLOCKCHAIN_MAX_SHARES                           (1000*1000*::int64_t(1000)*1000*::int64_t(1000))
+ 
+ /**
+  * Initial shares read from the genesis block are scaled to this number. It is divided
+@@ -99,12 +99,12 @@
+ /**
+  *  The number of blocks expected per day based upon the BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC
+  */
+-#define BTS_BLOCKCHAIN_BLOCKS_PER_DAY                       (BTS_BLOCKCHAIN_BLOCKS_PER_HOUR*int64_t(24))
++#define BTS_BLOCKCHAIN_BLOCKS_PER_DAY                       (BTS_BLOCKCHAIN_BLOCKS_PER_HOUR*::int64_t(24))
+ 
+ /**
+  * The number of blocks expected per year based upon the BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC
+  */
+-#define BTS_BLOCKCHAIN_BLOCKS_PER_YEAR                      (BTS_BLOCKCHAIN_BLOCKS_PER_DAY*int64_t(365))
++#define BTS_BLOCKCHAIN_BLOCKS_PER_YEAR                      (BTS_BLOCKCHAIN_BLOCKS_PER_DAY*::int64_t(365))
+ 
+ #define BTS_BLOCKCHAIN_AVERAGE_TRX_SIZE                     512 // just a random assumption used to calibrate TRX per SEC
+ #define BTS_BLOCKCHAIN_MAX_TRX_PER_SECOND                   5  // (10)
+diff --git a/libraries/client/blockchain_api.cpp b/libraries/client/blockchain_api.cpp
+index b85f0c2c..ded084c7 100644
+--- a/libraries/client/blockchain_api.cpp
++++ b/libraries/client/blockchain_api.cpp
+@@ -343,7 +343,7 @@ asset client_impl::blockchain_calculate_debt( const string& asset/*, bool includ
+ bts::blockchain::blockchain_security_state client_impl::blockchain_get_security_state()const
+ {
+    blockchain_security_state state;
+-   int64_t required_confirmations = _chain_db->get_required_confirmations();
++   ::int64_t required_confirmations = _chain_db->get_required_confirmations();
+    double participation_rate = _chain_db->get_average_delegate_participation();
+    if( participation_rate > 100 ) participation_rate = 100;
+ 
+@@ -471,7 +471,7 @@ std::map<uint32_t, vector<fork_record>> client_impl::blockchain_list_forks()cons
+ }
+ 
+ vector<slot_record> client_impl::blockchain_get_delegate_slot_records( const string& delegate_name,
+-                                                                       int64_t start_block_num, uint32_t count )const
++                                                                       ::int64_t start_block_num, uint32_t count )const
+ {
+    const auto delegate_record = _chain_db->get_account_record( delegate_name );
+    FC_ASSERT( delegate_record.valid() && delegate_record->is_delegate(), "${n} is not a delegate!", ("n",delegate_name) );
+diff --git a/libraries/client/client.cpp b/libraries/client/client.cpp
+index a2367fc0..c49eb78f 100644
+--- a/libraries/client/client.cpp
++++ b/libraries/client/client.cpp
+@@ -650,7 +650,7 @@ void client_impl::start_rebroadcast_pending_loop()
+ {
+    if (!_rebroadcast_pending_loop_done.valid() || _rebroadcast_pending_loop_done.ready())
+       _rebroadcast_pending_loop_done = fc::schedule( [=](){ rebroadcast_pending_loop(); },
+-      fc::time_point::now() + fc::seconds((int64_t)(BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC * 1.3)),
++      fc::time_point::now() + fc::seconds((::int64_t)(BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC * 1.3)),
+       "rebroadcast_pending" );
+ }
+ 
+@@ -703,7 +703,7 @@ void client_impl::rebroadcast_pending_loop()
+    }
+    if (!_rebroadcast_pending_loop_done.canceled())
+       _rebroadcast_pending_loop_done = fc::schedule( [=](){ rebroadcast_pending_loop(); },
+-      fc::time_point::now() + fc::seconds((int64_t)(BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC * 1.3)),
++      fc::time_point::now() + fc::seconds((::int64_t)(BTS_BLOCKCHAIN_BLOCK_INTERVAL_SEC * 1.3)),
+       "rebroadcast_pending" );
+ }
+ 
+@@ -775,7 +775,7 @@ block_fork_data client_impl::on_new_block(const full_block& block,
+                         speed_message << std::setprecision(2) << average_sync_speed << " blocks/sec, ";
+                      else
+                         speed_message << (int)(1./average_sync_speed) << " sec/block, ";
+-                     speed_message << fc::get_approximate_relative_time_string(fc::time_point::now(), fc::time_point::now() + fc::seconds((int64_t)remaining_seconds_to_sync), "") << " remaining";
++                     speed_message << fc::get_approximate_relative_time_string(fc::time_point::now(), fc::time_point::now() + fc::seconds((::int64_t)remaining_seconds_to_sync), "") << " remaining";
+                   }
+                   else
+                      speed_message << "--- currently syncing at an imperceptible rate";
+diff --git a/libraries/client/wallet_api.cpp b/libraries/client/wallet_api.cpp
+index 37aa8ffe..db27f9f9 100644
+--- a/libraries/client/wallet_api.cpp
++++ b/libraries/client/wallet_api.cpp
+@@ -208,7 +208,7 @@ wallet_transaction_record detail::client_impl::wallet_asset_create(
+         const string& description,
+         const variant& data,
+         double maximum_share_supply ,
+-        int64_t precision,
++        ::int64_t precision,
+         bool is_market_issued /* = false */ )
+ {
+ #ifndef PTS_SUPPRESS_ASSETS
+diff --git a/libraries/utilities/CMakeLists.txt b/libraries/utilities/CMakeLists.txt
+index 6d8b6f1b..2fa683f0 100644
+--- a/libraries/utilities/CMakeLists.txt
++++ b/libraries/utilities/CMakeLists.txt
+@@ -1,11 +1,8 @@
+ list( APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libraries/fc/GitVersionGen" )
+ include( GetGitRevisionDescription )
+-get_git_head_revision(GIT_REFSPEC BITSHARES_TOOLKIT_GIT_REVISION_SHA)
+-get_git_unix_timestamp(BITSHARES_TOOLKIT_GIT_REVISION_UNIX_TIMESTAMP)
+-git_describe(BITSHARES_TOOLKIT_GIT_REVISION_DESCRIPTION --tags)
+-if(NOT BITSHARES_TOOLKIT_GIT_REVISION_DESCRIPTION)
+-    set(BITSHARES_TOOLKIT_GIT_REVISION_DESCRIPTION "unknown")
+-endif(NOT BITSHARES_TOOLKIT_GIT_REVISION_DESCRIPTION)
++set(BITSHARES_TOOLKIT_GIT_REVISION_SHA "63ca0c7763ca0c7763ca0c7763ca0c7763ca0c77")
++set(BITSHARES_TOOLKIT_GIT_REVISION_UNIX_TIMESTAMP 1418835665)
++set(BITSHARES_TOOLKIT_GIT_REVISION_DESCRIPTION "v2.0.1")
+ 
+ file(GLOB headers "include/bts/utilities/*.hpp")
+ 
